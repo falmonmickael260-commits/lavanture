@@ -1,0 +1,12 @@
+{
+  "name": "Les Mondes de Nour",
+  "short_name": "Nour",
+  "description": "Une aventure éducative pour le CP",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8f1df",
+  "theme_color": "#244d53",
+  "icons": [{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
