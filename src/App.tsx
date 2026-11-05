@@ -70,7 +70,7 @@ export default function App() {
   const fileRef = useRef<HTMLInputElement>(null);
   const { speak, effect } = useNarrator(state);
 
-  useEffect(() => { loadSave().then(saved => { stateRef.current = saved; setState(saved); }).catch(() => setError('La sauvegarde locale est indisponible. Vérifiez les réglages du navigateur.')); }, []);
+  useEffect(() => { loadSave().then(saved => { const welcome = { ...saved, view: 'home' as View }; stateRef.current = welcome; setState(welcome); }).catch(() => setError('La sauvegarde locale est indisponible. Vérifiez les réglages du navigateur.')); }, []);
   const commit = useCallback(async (update: (old: GameState) => GameState) => {
     const old = stateRef.current;
     if (!old) return;
