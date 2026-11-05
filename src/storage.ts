@@ -35,6 +35,7 @@ export function migrateSave(input: unknown): GameState {
   const state: GameState = {
     ...base, ...old, version: SAVE_VERSION, worlds: mergedWorlds,
     rewards: Array.isArray(old.rewards) ? [...new Set(old.rewards.filter((item): item is string => typeof item === 'string'))] : [],
+    foundTreasures: Array.isArray(old.foundTreasures) ? old.foundTreasures.filter((id): id is WorldId => worlds.some(world => world.id === id)) : [],
     sound: { ...base.sound, ...old.sound }, outfit: { ...base.outfit, ...old.outfit },
     decor: Array.isArray(old.decor) ? old.decor.filter((item): item is string => typeof item === 'string') : [],
     skillEvidence: old.skillEvidence ?? {}, struggles: old.struggles ?? {}

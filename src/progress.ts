@@ -15,6 +15,7 @@ export interface GameState {
   stars: number;
   coins: number;
   rewards: string[];
+  foundTreasures: WorldId[];
   outfit: { dress: string; accessory: string };
   decor: string[];
   sound: { voice: boolean; effects: boolean; music: boolean };
@@ -28,7 +29,7 @@ export function initialState(): GameState {
   return {
     version: SAVE_VERSION, updatedAt: Date.now(), view: 'home', currentWorld: 'forest', currentLevelId: null, replayIndex: 0,
     worlds: { forest: freshWorld(true), numbers: freshWorld(false), village: freshWorld(false), island: freshWorld(false), castle: freshWorld(false) },
-    stars: 0, coins: 0, rewards: [], outfit: { dress: 'corail', accessory: 'aucun' }, decor: [],
+    stars: 0, coins: 0, rewards: [], foundTreasures: [], outfit: { dress: 'corail', accessory: 'aucun' }, decor: [],
     sound: { voice: true, effects: true, music: false }, skillEvidence: {}, struggles: {}, playTimeMs: 0
   };
 }
@@ -111,6 +112,12 @@ export function validateActivity(state: GameState, activityId: string): GameStat
 }
 
 export function mastered(state: GameState, worldId: WorldId): boolean { return (state.skillEvidence[worldId] ?? 0) >= 3; }
+export function collectTreasure(state: GameState, worldId: WorldId): GameState {
+  if (!state.worlds[worldId].unlocked || state.foundTreasures.includes(worldId)) return state;
+  const reward = `Coffre de ${worldById(worldId).name}`;
+  return { ...state, foundTreasures: [...state.foundTreasures, worldId], coins: state.coins + 2,
+    rewards: state.rewards.includes(reward) ? state.rewards : [...state.rewards, reward] };
+}
 export function worldForLevel(levelId: string): WorldId { return levelId.split('-')[0] as WorldId; }
 export function levelNumber(levelId: string): number { return Number(levelId.split('-')[1]); }
 export function nextLevelTitle(state: GameState, worldId: WorldId): string {

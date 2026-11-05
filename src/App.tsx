@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { worlds, worldById, type WorldId } from './content';
-import { activeActivity, completedCount, isLevelUnlocked, mastered, recordMistake, resumeState, startLevel, validateActivity, type GameState, type View } from './progress';
+import { activeActivity, collectTreasure, completedCount, isLevelUnlocked, mastered, recordMistake, resumeState, startLevel, validateActivity, type GameState, type View } from './progress';
 import { exportSave, loadSave, parseImport, resetSave, writeSave } from './storage';
-import { Companion, ItemArt, MissionSetpiece, NourArt, WorldBackdrop } from './Art';
+import { Companion, ItemArt, MissionSetpiece, NourArt, TreasureArt, WorldBackdrop } from './Art';
 import ActivityPanel from './ActivityPanel';
 
 const positions = [[13,70],[24,54],[36,66],[47,45],[59,61],[70,42],[81,58],[87,31],[65,25],[39,25]];
@@ -65,6 +65,7 @@ export default function App() {
   const [parentGate, setParentGate] = useState(false);
   const [parentAnswer, setParentAnswer] = useState('');
   const [parentUnlocked, setParentUnlocked] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [pauseSuggested, setPauseSuggested] = useState(false);
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -81,7 +82,7 @@ export default function App() {
     try { await writeQueue.current; setError(''); }
     catch { setError('Impossible d’enregistrer maintenant. Gardez cette page ouverte et réessayez.'); }
   }, []);
-  const show = (view: View) => void commit(old => ({ ...old, view }));
+  const show = (view: View) => { setGuideOpen(false); void commit(old => ({ ...old, view })); };
 
   useEffect(() => {
     if (!state) return;
@@ -96,6 +97,7 @@ export default function App() {
 
   const enterWorld = (id: WorldId) => {
     if (!state?.worlds[id].unlocked) return;
+    setGuideOpen(false);
     void commit(old => ({ ...old, currentWorld: id, view: 'world' }));
     speak(`Bienvenue dans ${worldById(id).name}.`);
   };
@@ -108,6 +110,17 @@ export default function App() {
     const id = old.currentWorld; const position = old.worlds[id].position;
     return { ...old, worlds: { ...old.worlds, [id]: { ...old.worlds[id], position: { x: Math.max(6, Math.min(94, position.x + dx)), y: Math.max(15, Math.min(82, position.y + dy)) } } } };
   });
+  const openTreasure = () => {
+    if (!state || state.foundTreasures.includes(state.currentWorld)) return;
+    const { x, y } = progress.position;
+    if (Math.abs(x - 91) + Math.abs(y - 76) > 18) {
+      void commit(old => ({ ...old, worlds: { ...old.worlds, [old.currentWorld]: { ...old.worlds[old.currentWorld], position: { x: 89, y: 74 } } } }));
+      setNotice('Nour s’approche du coffre. Touche-le encore pour l’ouvrir !');
+      return;
+    }
+    void commit(old => collectTreasure(old, old.currentWorld));
+    effect(); setNotice('Un trésor découvert ! Deux pièces et un souvenir pour la maison.');
+  };
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if (stateRef.current?.view !== 'world' || ['INPUT','TEXTAREA'].includes((event.target as HTMLElement)?.tagName)) return;
@@ -161,7 +174,7 @@ export default function App() {
 
     {state.view === 'map' && <main className="page"><div className="page-heading"><p className="eyebrow">LA GRANDE CARTE</p><h1>Où va l’aventure ?</h1><p>Les mondes découverts restent ouverts pour toujours.</p></div><div className="world-grid">{worlds.map((world,index) => { const unlocked = state.worlds[world.id].unlocked; const done = completedCount(state,world.id); return <button key={world.id} className={`world-card card-${world.id} ${unlocked ? '' : 'locked'}`} onClick={() => enterWorld(world.id)} disabled={!unlocked}><div className="world-card-art"><WorldBackdrop worldId={world.id}/><span className="world-symbol">{unlocked ? worldSymbols[world.id] : '⌁'}</span></div><div className="world-card-content"><span className="world-number">MONDE 0{index+1} {unlocked ? '' : '· VERROUILLÉ'}</span><h2>{world.name}</h2><p>{unlocked ? worldDescriptions[world.id] : 'Un nouveau chemin apparaîtra bientôt.'}</p><span className="world-progress">{unlocked ? `${done} / 10 missions` : 'À découvrir'}</span></div></button>; })}</div></main>}
 
-    {state.view === 'world' && <main className="world-page"><div className="world-toolbar"><button className="back" onClick={() => show('map')}>← Grande carte</button><div><p className="eyebrow">{currentWorld.subtitle}</p><h1>{currentWorld.name}</h1></div><span className="world-counter">{completedCount(state,state.currentWorld)} / 10</span></div><div className="scene-frame"><div className="scene" onClick={event => { if ((event.target as HTMLElement).closest('button')) return; const rect = event.currentTarget.getBoundingClientRect(); const x = Math.round((event.clientX-rect.left)/rect.width*100); const y = Math.round((event.clientY-rect.top)/rect.height*100); void commit(old => ({ ...old, worlds: { ...old.worlds, [old.currentWorld]: { ...old.worlds[old.currentWorld], position: {x,y} } } })); }}><WorldBackdrop worldId={state.currentWorld}/><div className="scene-grain"/>{currentWorld.levels.map((level,index) => { const [x,y] = positions[index]; const unlocked = isLevelUnlocked(state,state.currentWorld,index+1); const done = !!progress.levels[index+1]?.completed; return <button key={level.id} className={`level-node ${done ? 'done' : ''} ${unlocked ? '' : 'locked'}`} style={{left:`${x}%`,top:`${y}%`}} disabled={!unlocked} onClick={() => start(state.currentWorld,index+1)} aria-label={`${level.title}, ${done ? 'terminé' : unlocked ? 'disponible' : 'verrouillé'}`}><span>{done ? '✦' : unlocked ? index+1 : '◇'}</span></button>; })}<div className="player" style={{left:`${progress.position.x}%`,top:`${progress.position.y}%`}}><NourArt mood="walk" dress={state.outfit.dress} accessory={state.outfit.accessory}/></div><div className="scene-companion"><Companion worldId={state.currentWorld}/></div></div><div className="controls"><span>Déplace Nour pour explorer</span><div><button onClick={() => move(-4,0)} aria-label="Aller à gauche">←</button><button onClick={() => move(0,-4)} aria-label="Aller en haut">↑</button><button onClick={() => move(0,4)} aria-label="Aller en bas">↓</button><button onClick={() => move(4,0)} aria-label="Aller à droite">→</button></div></div></div><div className="level-list">{currentWorld.levels.map((level,index) => { const number=index+1; const unlocked=isLevelUnlocked(state,state.currentWorld,number); const record=progress.levels[number]; return <button key={level.id} disabled={!unlocked} className={`level-row ${record?.completed ? 'complete' : ''}`} onClick={() => start(state.currentWorld,number)}><span className="level-badge">{record?.completed ? '✦' : unlocked ? number : '◇'}</span><span><strong>{level.title}</strong><small>{record?.completed ? 'Terminé · rejouer' : record?.activityIndex ? `Reprendre à l’activité ${record.activityIndex+1}` : unlocked ? 'Prêt à explorer' : 'Chemin verrouillé'}</small></span><span className="row-arrow">{unlocked ? '→' : ''}</span></button>; })}</div></main>}
+    {state.view === 'world' && <main className="world-page"><div className="world-toolbar"><button className="back" onClick={() => show('map')}>← Grande carte</button><div><p className="eyebrow">{currentWorld.subtitle}</p><h1>{currentWorld.name}</h1></div><span className="world-counter">{completedCount(state,state.currentWorld)} / 10</span></div><div className="scene-frame"><div className="scene" onClick={event => { if ((event.target as HTMLElement).closest('button')) return; const rect = event.currentTarget.getBoundingClientRect(); const x = Math.round((event.clientX-rect.left)/rect.width*100); const y = Math.round((event.clientY-rect.top)/rect.height*100); void commit(old => ({ ...old, worlds: { ...old.worlds, [old.currentWorld]: { ...old.worlds[old.currentWorld], position: {x,y} } } })); }}><WorldBackdrop worldId={state.currentWorld}/><div className="scene-grain"/>{currentWorld.levels.map((level,index) => { const [x,y] = positions[index]; const unlocked = isLevelUnlocked(state,state.currentWorld,index+1); const done = !!progress.levels[index+1]?.completed; return <button key={level.id} className={`level-node ${done ? 'done' : ''} ${unlocked ? '' : 'locked'}`} style={{left:`${x}%`,top:`${y}%`}} disabled={!unlocked} onClick={() => start(state.currentWorld,index+1)} aria-label={`${level.title}, ${done ? 'terminé' : unlocked ? 'disponible' : 'verrouillé'}`}><span>{done ? '✦' : unlocked ? index+1 : '◇'}</span></button>; })}<div className="player" style={{left:`${progress.position.x}%`,top:`${progress.position.y}%`}}><NourArt mood="walk" dress={state.outfit.dress} accessory={state.outfit.accessory}/></div><button className="scene-companion" onClick={() => { setGuideOpen(true); speak(`Bonjour Nour ! Je suis ${currentWorld.guide}. Je t’accompagne dans ${currentWorld.name}.`); }} aria-label={`Parler à ${currentWorld.guide}`}><Companion worldId={state.currentWorld}/><span>Parle-moi</span></button><button className="scene-treasure" onClick={openTreasure} aria-label={state.foundTreasures.includes(state.currentWorld) ? 'Coffre déjà ouvert' : 'Découvrir le coffre'}><TreasureArt open={state.foundTreasures.includes(state.currentWorld)}/></button></div><div className="controls"><span>Déplace Nour pour explorer · touche le guide ou le coffre</span><div><button onClick={() => move(-4,0)} aria-label="Aller à gauche">←</button><button onClick={() => move(0,-4)} aria-label="Aller en haut">↑</button><button onClick={() => move(0,4)} aria-label="Aller en bas">↓</button><button onClick={() => move(4,0)} aria-label="Aller à droite">→</button></div></div></div>{guideOpen && <div className="guide-dialogue"><Companion worldId={state.currentWorld}/><div><strong>{currentWorld.guide}</strong><p>Bonjour Nour ! Explore le chemin et touche une pierre numérotée pour commencer une mission. Je peux t’accompagner vers la prochaine.</p></div><button className="primary" onClick={() => { setGuideOpen(false); start(state.currentWorld, progress.currentLevel); }}>Allons-y !</button><button className="dialogue-close" onClick={() => setGuideOpen(false)} aria-label="Fermer la discussion">×</button></div>}<div className="level-list">{currentWorld.levels.map((level,index) => { const number=index+1; const unlocked=isLevelUnlocked(state,state.currentWorld,number); const record=progress.levels[number]; return <button key={level.id} disabled={!unlocked} className={`level-row ${record?.completed ? 'complete' : ''}`} onClick={() => start(state.currentWorld,number)}><span className="level-badge">{record?.completed ? '✦' : unlocked ? number : '◇'}</span><span><strong>{level.title}</strong><small>{record?.completed ? 'Terminé · rejouer' : record?.activityIndex ? `Reprendre à l’activité ${record.activityIndex+1}` : unlocked ? 'Prêt à explorer' : 'Chemin verrouillé'}</small></span><span className="row-arrow">{unlocked ? '→' : ''}</span></button>; })}</div></main>}
 
     {state.view === 'mission' && active && activity && <main className="mission-page"><div className="mission-top"><button className="back" onClick={() => show('world')}>← Quitter la mission</button><div className="mission-mini">{currentWorld.name} · Mission {active.number}</div></div><div className="mission-layout"><aside className="mission-story"><div className="story-visual"><WorldBackdrop worldId={active.worldId}/><MissionSetpiece levelId={active.level.id} complete={active.index} total={active.level.activities.length}/><div className="story-nour"><NourArt mood="think" dress={state.outfit.dress} accessory={state.outfit.accessory}/></div></div><div className="story-copy"><p className="eyebrow">MISSION {active.number} / 10</p><h1>{active.level.title}</h1><p>{active.level.story}</p><div className="mission-progress"><div className="progress-track"><span style={{width:`${active.index/active.level.activities.length*100}%`}}/></div><small>Étape {active.index+1} sur {active.level.activities.length}</small></div></div><div className="guide-box"><Companion worldId={active.worldId}/><p>Prends ton temps, Nour. Je suis avec toi !</p></div></aside><ActivityPanel key={activity.id} activity={activity} attempts={active.record?.attempts[activity.id] ?? 0} onSuccess={succeed} onMistake={mistake} speak={speak}/></div></main>}
 

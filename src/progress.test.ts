@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { worlds } from './content';
-import { activeActivity, completedCount, initialState, isLevelUnlocked, recordMistake, resumeState, startLevel, validateActivity } from './progress';
+import { activeActivity, collectTreasure, completedCount, initialState, isLevelUnlocked, recordMistake, resumeState, startLevel, validateActivity } from './progress';
 import { loadSave, migrateSave, resetSave, writeSave } from './storage';
 
 beforeEach(async () => { await resetSave(); });
@@ -88,6 +88,17 @@ describe('sauvegarde et progression', () => {
     expect(state.worlds.castle.unlocked).toBe(true);
     expect(completedCount(state)).toBe(8);
   });
+
+  it('ne donne le trésor d’un monde qu’une seule fois', async () => {
+    const first = collectTreasure(initialState(), 'forest');
+    const second = collectTreasure(first, 'forest');
+    expect(first.coins).toBe(2);
+    expect(second).toBe(first);
+    expect(second.rewards).toHaveLength(1);
+    expect(collectTreasure(second, 'numbers')).toBe(second);
+    await writeSave(second);
+    expect((await loadSave()).foundTreasures).toEqual(['forest']);
+  });
 });
 
 describe('contenu pédagogique', () => {
@@ -121,5 +132,29 @@ describe('contenu pédagogique', () => {
     expect(first.activities).toHaveLength(5);
     expect(first.activities[0].kind).toBe('collect');
     if (first.activities[0].kind === 'collect') expect(first.activities[0].answer).toEqual(['A','E','I','O','U']);
+  });
+
+  it('propose des activités dont la solution existe bien dans les éléments affichés', () => {
+    for (const activity of worlds.flatMap(world => world.levels).flatMap(level => level.activities)) {
+      if (activity.kind === 'choice') expect(activity.choices, activity.id).toContain(activity.answer);
+      if (activity.kind === 'count') expect(activity.choices, activity.id).toContain(activity.quantity);
+      if (activity.kind === 'collect') expect(activity.answer.every(token => activity.tokens.includes(token)), activity.id).toBe(true);
+      if (activity.kind === 'explore') expect(activity.answer.every(token => activity.objects.includes(token)), activity.id).toBe(true);
+      if (activity.kind === 'order') expect([...activity.tokens].sort(), activity.id).toEqual([...activity.answer].sort());
+      if (activity.kind === 'match' || activity.kind === 'memory') expect(activity.pairs.length, activity.id).toBeGreaterThan(1);
+    }
+  });
+
+  it('permet de terminer les 50 niveaux dans leur ordre de déblocage', () => {
+    let state = initialState();
+    for (const world of worlds) {
+      expect(state.worlds[world.id].unlocked, world.id).toBe(true);
+      for (let number=1;number<=10;number++) {
+        expect(isLevelUnlocked(state,world.id,number), `${world.id}-${number}`).toBe(true);
+        state = finishLevel(state,world.id,number);
+      }
+    }
+    expect(completedCount(state)).toBe(50);
+    expect(state.stars).toBe(150);
   });
 });

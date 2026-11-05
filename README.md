@@ -21,11 +21,11 @@ Pour le test réel dans Chrome, lancer `npm run dev`, puis `npm run test:browser
 ## Architecture
 
 - `src/content.ts` : les 50 niveaux et leurs activités.
-- `src/progress.ts` : règles de déblocage, récompenses et maîtrise.
+- `src/progress.ts` : règles de déblocage, récompenses uniques et indices de maîtrise.
 - `src/storage.ts` : sauvegarde IndexedDB, migration et import/export.
 - `src/App.tsx` : carte, aventure, maison et espace parent.
 
-Les activités validées sont enregistrées séparément pour chaque niveau. Rejouer un niveau permet de s'entraîner sans regagner ses récompenses. Les commandes de déplacement fonctionnent au clavier, au toucher et à la souris.
+Les activités validées sont enregistrées séparément pour chaque niveau. Rejouer un niveau permet de s'entraîner sans regagner ses récompenses. Les commandes de déplacement fonctionnent au clavier, au toucher et à la souris. Chaque monde propose un guide avec lequel parler et un coffre à découvrir une seule fois.
 
 ## Publication
 

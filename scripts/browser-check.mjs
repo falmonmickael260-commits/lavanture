@@ -29,6 +29,14 @@ try {
   await page.getByRole('button', { name: /Réécouter la consigne/ }).click();
 
   await page.getByRole('button', { name: /Quitter la mission/ }).click();
+  await page.getByRole('button', { name: /Parler à Lila/ }).click();
+  await page.getByText('Bonjour Nour ! Explore le chemin').waitFor();
+  await page.getByRole('button', { name: 'Fermer la discussion' }).click();
+  await page.getByRole('button', { name: 'Découvrir le coffre' }).click();
+  await page.getByRole('button', { name: 'Découvrir le coffre' }).click();
+  assert.match(await page.locator('.top-stats span').nth(1).textContent(), /2/);
+  await page.getByRole('button', { name: 'Coffre déjà ouvert' }).click();
+  assert.match(await page.locator('.top-stats span').nth(1).textContent(), /2/);
   await page.getByRole('button', { name: /Grande carte/ }).click();
   assert.equal(await page.locator('.card-numbers').isDisabled(), true);
   assert.equal(await page.locator('.card-castle').isDisabled(), true);
@@ -61,7 +69,7 @@ try {
   const download = await downloadPromise;
   assert.match(download.suggestedFilename(), /sauvegarde\.json$/);
   assert.deepEqual(errors, []);
-  console.log('Navigateur : reprise au 3e exercice, verrouillage, audio, export parent et tailles desktop/tablette/mobile OK.');
+  console.log('Navigateur : reprise au 3e exercice, guide, coffre unique, verrouillage, audio, export parent et tailles desktop/tablette/mobile OK.');
 } finally {
   await browser.close();
 }

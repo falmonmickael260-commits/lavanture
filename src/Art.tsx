@@ -106,3 +106,14 @@ export function MissionSetpiece({ levelId, complete, total }: { levelId: string;
     {Array.from({length:total},(_,i)=>{const x=32+(i+1)*156/(total+1);const y=112-82*Math.sin(Math.PI*(i+1)/(total+1));return <g key={i}><circle cx={x} cy={y} r="13" fill={i<complete?'#ffd178':'#b9b4a9'} stroke="#fff7dd" strokeWidth="4"/><path d={`M${x} ${y-6}v12m-6-6h12`} stroke="#fff7dd" strokeWidth="2"/></g>;})}
   </svg>;
 }
+
+export function TreasureArt({ open = false }: { open?: boolean }) {
+  return <svg viewBox="0 0 90 80" role="img" aria-label={open ? 'Coffre ouvert' : 'Coffre au trésor'}>
+    <ellipse cx="45" cy="74" rx="35" ry="5" fill="#3e4b4a" opacity=".25"/>
+    <path d={open ? 'M10 37 4 13q41-22 82 0l-6 24Z' : 'M10 36V21q35-29 70 0v15Z'} fill="#ae754f" stroke="#644b42" strokeWidth="5"/>
+    <path d="M9 35h72l-5 32H14Z" fill="#b67c50" stroke="#644b42" strokeWidth="5"/>
+    <path d="M12 36h66m-57 0v30m48-30v30" stroke="#f1c879" strokeWidth="6"/>
+    <rect x="37" y="38" width="16" height="18" rx="3" fill="#f4d583" stroke="#845d44" strokeWidth="3"/>
+    {open && <><path d="m45 3 5 9 10 1-8 7 2 10-9-5-9 5 2-10-8-7 10-1Z" fill="#fff0a7"/><circle cx="17" cy="10" r="4" fill="#fff0a7"/><circle cx="73" cy="8" r="4" fill="#fff0a7"/></>}
+  </svg>;
+}
